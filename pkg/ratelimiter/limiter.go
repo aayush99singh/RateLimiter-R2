@@ -6,7 +6,7 @@ import (
 )
 
 type RateLimiter interface {
-	Allow(clientID string) bool
+	Allow(key string) bool
 }
 
 type tokenBucket struct {
@@ -16,7 +16,7 @@ type tokenBucket struct {
 
 type TokenBucketLimiter struct {
 	mu             sync.Mutex
-	clients        map[string]*tokenBucket
+	buckets        map[string]*tokenBucket
 	rate           float64
 	capacity       float64
 	cleanupTick    *time.Ticker
@@ -34,7 +34,7 @@ func NewTokenBucketLimiter(limit int, interval time.Duration) *TokenBucketLimite
 
 	rate := float64(limit) / interval.Seconds()
 	l := &TokenBucketLimiter{
-		clients:        make(map[string]*tokenBucket),
+		buckets:        make(map[string]*tokenBucket),
 		rate:           rate,
 		capacity:       float64(limit),
 		cleanupTick:    time.NewTicker(1 * time.Minute),
@@ -47,19 +47,19 @@ func NewTokenBucketLimiter(limit int, interval time.Duration) *TokenBucketLimite
 	return l
 }
 
-func (l *TokenBucketLimiter) Allow(clientID string) bool {
+func (l *TokenBucketLimiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	now := time.Now()
-	bucket, exists := l.clients[clientID]
+	bucket, exists := l.buckets[key]
 
 	if !exists {
 		bucket = &tokenBucket{
 			tokens:     l.capacity,
 			lastRefill: now,
 		}
-		l.clients[clientID] = bucket
+		l.buckets[key] = bucket
 	}
 
 	elapsed := now.Sub(bucket.lastRefill).Seconds()
@@ -85,9 +85,9 @@ func (l *TokenBucketLimiter) cleanupLoop() {
 		case <-l.cleanupTick.C:
 			l.mu.Lock()
 			now := time.Now()
-			for clientID, bucket := range l.clients {
+			for key, bucket := range l.buckets {
 				if now.Sub(bucket.lastRefill) > l.cleanupTimeout {
-					delete(l.clients, clientID)
+					delete(l.buckets, key)
 				}
 			}
 			l.mu.Unlock()

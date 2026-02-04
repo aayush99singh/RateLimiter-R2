@@ -10,11 +10,11 @@ func main() {
 	limiter := ratelimiter.NewTokenBucketLimiter(5, 1*time.Second)
 	defer limiter.Stop()
 
-	clientID := "user123"
+	userID := "user123"
 
 	fmt.Println("Simulating burst of 10 requests (Limit is 5/sec)...")
 	for i := 1; i <= 10; i++ {
-		allowed := limiter.Allow(clientID)
+		allowed := limiter.Allow(userID)
 		status := "Allowed"
 		if !allowed {
 			status = "Rejected"
@@ -26,7 +26,7 @@ func main() {
 	time.Sleep(1 * time.Second)
 
 	fmt.Println("Simulating 1 more request...")
-	if limiter.Allow(clientID) {
+	if limiter.Allow(userID) {
 		fmt.Println("Request Allowed")
 	} else {
 		fmt.Println("Request Rejected")

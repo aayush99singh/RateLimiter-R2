@@ -12,15 +12,15 @@ func TestTokenBucketLimiter_Allow(t *testing.T) {
 	limiter := NewTokenBucketLimiter(limit, interval)
 	defer limiter.Stop()
 
-	clientID := "test-client"
+	key := "test-client"
 
 	for i := 0; i < limit; i++ {
-		if !limiter.Allow(clientID) {
+		if !limiter.Allow(key) {
 			t.Errorf("Request %d should be allowed", i)
 		}
 	}
 
-	if limiter.Allow(clientID) {
+	if limiter.Allow(key) {
 		t.Errorf("Request %d should be rejected", limit+1)
 	}
 }
@@ -31,19 +31,19 @@ func TestTokenBucketLimiter_Refill(t *testing.T) {
 	limiter := NewTokenBucketLimiter(limit, interval)
 	defer limiter.Stop()
 
-	clientID := "test-client-refill"
+	key := "test-client-refill"
 
-	if !limiter.Allow(clientID) {
+	if !limiter.Allow(key) {
 		t.Fatal("First request should be allowed")
 	}
 
-	if limiter.Allow(clientID) {
+	if limiter.Allow(key) {
 		t.Fatal("Immediate second request should be rejected")
 	}
 
 	time.Sleep(150 * time.Millisecond)
 
-	if !limiter.Allow(clientID) {
+	if !limiter.Allow(key) {
 		t.Fatal("Request after refill should be allowed")
 	}
 }
@@ -54,7 +54,7 @@ func TestTokenBucketLimiter_Concurrency(t *testing.T) {
 	limiter := NewTokenBucketLimiter(limit, interval)
 	defer limiter.Stop()
 
-	clientID := "concurrent-client"
+	key := "concurrent-client"
 	var wg sync.WaitGroup
 	workers := 10
 	requestsPerWorker := 50
@@ -67,7 +67,7 @@ func TestTokenBucketLimiter_Concurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < requestsPerWorker; j++ {
-				if limiter.Allow(clientID) {
+				if limiter.Allow(key) {
 					mu.Lock()
 					allowedCount++
 					mu.Unlock()
@@ -94,22 +94,22 @@ func TestTokenBucketLimiter_Cleanup(t *testing.T) {
 
 	defer limiter.Stop()
 
-	clientID := "cleanup-client"
-	limiter.Allow(clientID)
+	key := "cleanup-client"
+	limiter.Allow(key)
 
 	limiter.mu.Lock()
-	if _, exists := limiter.clients[clientID]; !exists {
+	if _, exists := limiter.buckets[key]; !exists {
 		limiter.mu.Unlock()
-		t.Fatal("Client should exist immediately after request")
+		t.Fatal("Client bucket should exist immediately after request")
 	}
 	limiter.mu.Unlock()
 
 	time.Sleep(400 * time.Millisecond)
 
 	limiter.mu.Lock()
-	if _, exists := limiter.clients[clientID]; exists {
+	if _, exists := limiter.buckets[key]; exists {
 		limiter.mu.Unlock()
-		t.Error("Client should have been cleaned up")
+		t.Error("Client bucket should have been cleaned up")
 	}
 	limiter.mu.Unlock()
 }

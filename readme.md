@@ -5,10 +5,10 @@
 ### Types
 
 **RateLimiter Interface**
-- `Allow` checks if a request from the given clientID is allowed.
+- `Allow` checks if a request from the given key is allowed.
 
 **tokenBucket Struct**
-- Represents the state for a single client in the token bucket algorithm.
+- Represents the state for a single key (client/user) in the token bucket algorithm.
 
 **TokenBucketLimiter Struct**
 - Implements `RateLimiter` using the Token Bucket algorithm.
@@ -17,7 +17,7 @@
 - `capacity`: Maximum number of tokens in the bucket.
 - `cleanupTick`: Ticker for cleanup routine.
 - `stopCleanup`: Channel to stop cleanup routine.
-- `cleanupTimeout`: Duration after which an inactive client is removed.
+- `cleanupTimeout`: Duration after which an inactive key's bucket is removed.
 
 ### Functions
 
@@ -27,15 +27,15 @@
 - `interval`: the time interval for the limit (e.g., 1 minute).
 - This implementation allows a burst equal to the limit.
 - Panics if limit is non-positive or interval is non-positive.
-- Sets `cleanupTimeout` to 10 minutes (Remove clients inactive for 10 minutes).
+- Sets `cleanupTimeout` to 10 minutes (Remove buckets inactive for 10 minutes).
 
 **TokenBucketLimiter.Allow**
-- Checks if the request is allowed for the clientID.
+- Checks if the request is allowed for the key.
 - Calculate tokens to add based on time passed.
 
 **TokenBucketLimiter.cleanupLoop**
-- Periodically removes old client entries to prevent memory leaks.
-- If the bucket is full (meaning no activity for a while) and enough time has passed (specifically, we can check how long it takes to fill from empty to full: capacity / rate. But simpler is to check if lastRefill is too old), it deletes the client.
+- Periodically removes old bucket entries to prevent memory leaks.
+- If the bucket is full (meaning no activity for a while) and enough time has passed (specifically, we can check how long it takes to fill from empty to full: capacity / rate. But simpler is to check if lastRefill is too old), it deletes the bucket.
 
 **TokenBucketLimiter.Stop**
 - Stops the cleanup goroutine.
@@ -70,9 +70,9 @@
 **TestTokenBucketLimiter_Cleanup**
 - Use a short cleanup timeout for testing.
 - Override ticker to be faster for test.
-- Client should exist immediately after request.
+- Bucket should exist immediately after request.
 - Wait for cleanup.
-- Client should have been cleaned up.
+- Bucket should have been cleaned up.
 
 
 ## Design Decisions
